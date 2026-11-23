@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import {
   Activity, AlertTriangle, CheckCircle2, Clock, Cpu, Download, Fan, Flame, Globe,
   LayoutDashboard, Lock, Minus, MoreVertical, Plus, Power, Radio, Settings,
-  ShieldCheck, SlidersHorizontal, Smartphone, Snowflake, TrendingUp, Wind, X,
+  ShieldCheck, SlidersHorizontal, Snowflake, TrendingUp, Wind, X,
 } from "lucide-react";
 
 /* ───────────────────────── Types & constants ───────────────────────── */
@@ -12,7 +12,7 @@ type Mode = "AUTO" | "MANUAL";
 type Relays = { fan: boolean; heat: boolean; cool: boolean };
 type Point = { t: number; temp: number; hum: number; label: string };
 type Sim = {
-  temp: number; hum: number; target: number; mode: Mode; relays: Relays;
+  temp: number; hum: number; target: number; targetHum: number; mode: Mode; relays: Relays;
   history: Point[]; latency: number; rssi: number; tick: number;
 };
 
@@ -22,6 +22,9 @@ const C = {
   chill: "#8FE9F5",
 };
 const T_MIN = 24, T_MAX = 35;
+const H_MIN = 50, H_MAX = 80; // humidity setpoint bounds (% RH)
+const LOGO = "data:image/png;base64,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";
+const BRAND = "8tins FeedMaster";
 const MONO = "ui-monospace, 'SF Mono', 'JetBrains Mono', Menlo, Consolas, monospace";
 const SANS = "'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif";
 
@@ -45,7 +48,7 @@ function seed(): Point[] {
 function initial(): Sim {
   const h = seed();
   return {
-    temp: h[59].temp, hum: h[59].hum, target: 30, mode: "AUTO",
+    temp: h[59].temp, hum: h[59].hum, target: 30, targetHum: 65, mode: "AUTO",
     relays: { fan: true, heat: false, cool: false },
     history: h, latency: 24, rssi: -58, tick: 0,
   };
@@ -63,7 +66,8 @@ function step(s: Sim): Sim {
     s.temp + (27.5 - s.temp) * 0.012 + (heat ? 0.17 : 0) - (cool ? 0.19 : 0) + (fan ? -0.01 : 0.01) + rnd(-0.04, 0.04),
     22, 38,
   );
-  const hum = clamp(s.hum + (65 - s.hum) * 0.04 + (heat ? -0.14 : 0) + (cool ? 0.1 : 0) + rnd(-0.25, 0.25), 35, 95);
+  // In AUTO the simulation steers humidity toward the setpoint; replace with real sensor data later
+  const hum = clamp(s.hum + ((s.mode === "AUTO" ? s.targetHum : 65) - s.hum) * 0.04 + (heat ? -0.14 : 0) + (cool ? 0.1 : 0) + rnd(-0.25, 0.25), 35, 95);
   const now = Date.now();
   const history = [...s.history.slice(-59), { t: now, temp, hum, label: clock(new Date(now)) }];
   return {
@@ -75,8 +79,10 @@ function step(s: Sim): Sim {
 
 const tempStatus = (d: number) =>
   Math.abs(d) <= 0.8 ? { l: "OPTIMAL", c: C.ok } : Math.abs(d) <= 2 ? { l: "DRIFTING", c: C.warn } : { l: "ALARM", c: C.bad };
-const humStatus = (h: number) =>
-  h >= 60 && h <= 70 ? { l: "OPTIMAL", c: C.ok } : h >= 55 && h <= 75 ? { l: "MARGINAL", c: C.warn } : { l: "OUT OF RANGE", c: C.bad };
+const humStatus = (h: number, target: number) => {
+  const d = Math.abs(h - target);
+  return d <= 3 ? { l: "OPTIMAL", c: C.ok } : d <= 6 ? { l: "MARGINAL", c: C.warn } : { l: "OUT OF RANGE", c: C.bad };
+};
 
 /* ───────────────────────── Primitives ───────────────────────── */
 
@@ -155,19 +161,20 @@ function DriftMeter({ delta }: { delta: number }) {
   );
 }
 
-function HumBar({ hum }: { hum: number }) {
+function HumBar({ hum, target }: { hum: number; target: number }) {
   const pos = clamp(((hum - 40) / 50) * 100, 2, 98);
   return (
     <div>
       <div className="relative h-2 rounded-full bg-[#101B2A] shadow-[inset_0_1px_3px_rgba(0,0,0,0.7)]">
         <div className="absolute inset-y-0 left-[40%] w-[20%] rounded-full bg-[#2ECC71]/30" />
+        <div className="absolute inset-y-[-3px] w-px bg-[#40D6C3]/80" style={{ left: `${clamp(((target - 40) / 50) * 100, 0, 100)}%` }} />
         <div
           className="absolute top-1/2 h-4 w-1.5 -translate-x-1/2 -translate-y-1/2 rounded-sm bg-[#F4F7FA] shadow-[0_0_10px_rgba(244,247,250,0.8)] transition-all duration-1000"
           style={{ left: `${pos}%` }}
         />
       </div>
       <div className="mt-1.5 flex justify-between text-[11px] text-[#A9BBCD]/80" style={{ fontFamily: MONO }}>
-        <span>40%</span><span>ideal 60–70%</span><span>90%</span>
+        <span>40%</span><span>ideal 60–70% · target tick</span><span>90%</span>
       </div>
     </div>
   );
@@ -201,7 +208,7 @@ function Actuator({ name, on, kind }: { name: string; on: boolean; kind: "fan" |
 
 function Dashboard({ s }: { s: Sim }) {
   const d = s.temp - s.target;
-  const ts = tempStatus(d), hs = humStatus(s.hum);
+  const ts = tempStatus(d), hs = humStatus(s.hum, s.targetHum);
   const prev = s.history[Math.max(0, s.history.length - 6)];
   const rate = ((s.temp - prev.temp) / ((Date.now() - prev.t) / 60000)) || 0;
   const margin = Math.min(s.temp - T_MIN, T_MAX - s.temp);
@@ -233,11 +240,13 @@ function Dashboard({ s }: { s: Sim }) {
           <div className="mt-4 flex items-end justify-between">
             <Readout value={s.hum.toFixed(1)} unit="% RH" />
             <div className="text-right text-xs text-[#A9BBCD]" style={{ fontFamily: MONO }}>
-              <div>BSF range: <span className="text-[#F4F7FA]">60% – 70%</span></div>
-              <div className="mt-1">{s.hum < 60 ? `${(60 - s.hum).toFixed(1)} below` : s.hum > 70 ? `${(s.hum - 70).toFixed(1)} above` : "within band"}</div>
+              <div>Target: <span className="text-[#F4F7FA]">{s.targetHum.toFixed(1)} % RH</span></div>
+              <div className="mt-1" style={{ color: Math.abs(s.hum - s.targetHum) <= 3 ? C.muted : C.warn }}>
+                {s.hum - s.targetHum >= 0 ? "+" : "−"}{Math.abs(s.hum - s.targetHum).toFixed(1)} % vs target
+              </div>
             </div>
           </div>
-          <div className="mt-5"><HumBar hum={s.hum} /></div>
+          <div className="mt-5"><HumBar hum={s.hum} target={s.targetHum} /></div>
         </Card>
       </div>
 
@@ -276,33 +285,56 @@ function Dashboard({ s }: { s: Sim }) {
 
 /* ───────────────────────── Climate control ───────────────────────── */
 
-function Dial({ target, temp }: { target: number; temp: number }) {
-  const frac = (target - T_MIN) / (T_MAX - T_MIN);
-  const cf = clamp((temp - T_MIN) / (T_MAX - T_MIN), 0, 1);
+function Dial({ id, target, current, min, max, digits, unit, tick, color }: {
+  id: string; target: number; current: number; min: number; max: number; digits: number; unit: string; tick: string; color: string;
+}) {
+  const frac = clamp((target - min) / (max - min), 0, 1);
+  const cf = clamp((current - min) / (max - min), 0, 1);
   const a = Math.PI * (1 - cf);
   const [cx, cy, r] = [130, 130, 100];
-  const p = (rad: number) => ({ x: cx + (r + 12) * Math.cos(rad), y: cy - (r + 12) * Math.sin(rad) });
-  const q = p(a), q2 = { x: cx + (r - 12) * Math.cos(a), y: cy - (r - 12) * Math.sin(a) };
+  const q = { x: cx + (r + 12) * Math.cos(a), y: cy - (r + 12) * Math.sin(a) };
+  const q2 = { x: cx + (r - 12) * Math.cos(a), y: cy - (r - 12) * Math.sin(a) };
   return (
     <svg viewBox="0 0 260 160" className="mx-auto w-full max-w-xs">
       <defs>
-        <linearGradient id="dialg" x1="0" x2="1"><stop offset="0" stopColor="#1E8F83" /><stop offset="1" stopColor={C.teal} /></linearGradient>
+        <linearGradient id={`dial-${id}`} x1="0" x2="1"><stop offset="0" stopColor={color} stopOpacity="0.45" /><stop offset="1" stopColor={color} /></linearGradient>
       </defs>
       <path d="M 30 130 A 100 100 0 0 1 230 130" fill="none" stroke={C.base} strokeWidth="14" strokeLinecap="round" />
-      <path d="M 30 130 A 100 100 0 0 1 230 130" fill="none" stroke="url(#dialg)" strokeWidth="14" strokeLinecap="round"
-        pathLength={100} strokeDasharray={`${frac * 100} 100`} style={{ transition: "stroke-dasharray .4s", filter: "drop-shadow(0 0 6px rgba(64,214,195,.6))" }} />
+      <path d="M 30 130 A 100 100 0 0 1 230 130" fill="none" stroke={`url(#dial-${id})`} strokeWidth="14" strokeLinecap="round"
+        pathLength={100} strokeDasharray={`${frac * 100} 100`} style={{ transition: "stroke-dasharray .4s", filter: `drop-shadow(0 0 6px ${color}99)` }} />
       <line x1={q2.x} y1={q2.y} x2={q.x} y2={q.y} stroke={C.text} strokeWidth="2" style={{ transition: "all 1s" }} />
-      <text x="30" y="152" fill={C.muted} fontSize="10" textAnchor="middle" fontFamily={MONO}>{T_MIN}°</text>
-      <text x="230" y="152" fill={C.muted} fontSize="10" textAnchor="middle" fontFamily={MONO}>{T_MAX}°</text>
-      <text x="130" y="122" fill={C.text} fontSize="38" textAnchor="middle" fontWeight="600" fontFamily={MONO}>{target.toFixed(1)}</text>
-      <text x="130" y="142" fill={C.muted} fontSize="11" textAnchor="middle" fontFamily={MONO}>°C setpoint</text>
+      <text x="30" y="152" fill={C.muted} fontSize="10" textAnchor="middle" fontFamily={MONO}>{min}{tick}</text>
+      <text x="230" y="152" fill={C.muted} fontSize="10" textAnchor="middle" fontFamily={MONO}>{max}{tick}</text>
+      <text x="130" y="122" fill={C.text} fontSize="38" textAnchor="middle" fontWeight="600" fontFamily={MONO}>{target.toFixed(digits)}</text>
+      <text x="130" y="142" fill={C.muted} fontSize="11" textAnchor="middle" fontFamily={MONO}>{unit} setpoint</text>
     </svg>
+  );
+}
+
+function Setpoint({ id, label, target, current, min, max, step, digits, unit, tick, color, note, onChange }: {
+  id: string; label: string; target: number; current: number; min: number; max: number; step: number; digits: number;
+  unit: string; tick: string; color: string; note: string; onChange: (v: number) => void;
+}) {
+  const btn = "flex h-11 w-11 items-center justify-center rounded-lg border border-[#28415C] bg-[#101B2A] text-[#F4F7FA] active:scale-95 hover:border-[#40D6C3]";
+  return (
+    <Card>
+      <Label>{label}</Label>
+      <Dial id={id} target={target} current={current} min={min} max={max} digits={digits} unit={unit} tick={tick} color={color} />
+      <div className="mt-2 flex items-center gap-3">
+        <button aria-label={`Decrease ${label}`} onClick={() => onChange(target - step)} className={btn}><Minus size={18} /></button>
+        <input type="range" min={min} max={max} step={step} value={target} onChange={(e) => onChange(parseFloat(e.target.value))}
+          aria-label={label} className="h-2 flex-1 cursor-pointer appearance-none rounded-full bg-[#101B2A]" style={{ accentColor: color }} />
+        <button aria-label={`Increase ${label}`} onClick={() => onChange(target + step)} className={btn}><Plus size={18} /></button>
+      </div>
+      <p className="mt-3 text-xs text-[#A9BBCD]">{note}</p>
+    </Card>
   );
 }
 
 function Climate({ s, set }: { s: Sim; set: (f: (p: Sim) => Sim) => void }) {
   const manual = s.mode === "MANUAL";
   const setTarget = (v: number) => set((p) => ({ ...p, target: clamp(Math.round(v * 2) / 2, T_MIN, T_MAX) }));
+  const setTargetHum = (v: number) => set((p) => ({ ...p, targetHum: clamp(Math.round(v), H_MIN, H_MAX) }));
   const toggle = (k: keyof Relays) =>
     set((p) => {
       if (p.mode !== "MANUAL") return p;
@@ -318,17 +350,14 @@ function Climate({ s, set }: { s: Sim; set: (f: (p: Sim) => Sim) => void }) {
   ];
   return (
     <div className="grid gap-5 lg:grid-cols-2">
-      <Card>
-        <Label>Target temperature</Label>
-        <Dial target={s.target} temp={s.temp} />
-        <div className="mt-2 flex items-center gap-3">
-          <button aria-label="Decrease setpoint" onClick={() => setTarget(s.target - 0.5)} className="flex h-11 w-11 items-center justify-center rounded-lg border border-[#28415C] bg-[#101B2A] text-[#F4F7FA] active:scale-95 hover:border-[#40D6C3]"><Minus size={18} /></button>
-          <input type="range" min={T_MIN} max={T_MAX} step={0.5} value={s.target} onChange={(e) => setTarget(parseFloat(e.target.value))}
-            aria-label="Target temperature" className="h-2 flex-1 cursor-pointer appearance-none rounded-full bg-[#101B2A] accent-[#40D6C3]" />
-          <button aria-label="Increase setpoint" onClick={() => setTarget(s.target + 0.5)} className="flex h-11 w-11 items-center justify-center rounded-lg border border-[#28415C] bg-[#101B2A] text-[#F4F7FA] active:scale-95 hover:border-[#40D6C3]"><Plus size={18} /></button>
-        </div>
-        <p className="mt-3 text-xs text-[#A9BBCD]">Safe larval bounds: {T_MIN.toFixed(1)}–{T_MAX.toFixed(1)} °C. Setpoint moves in 0.5 °C steps.</p>
-      </Card>
+      <div className="space-y-5">
+        <Setpoint id="temp" label="Target temperature" target={s.target} current={s.temp} min={T_MIN} max={T_MAX} step={0.5} digits={1}
+          unit="°C" tick="°" color={C.teal} onChange={setTarget}
+          note={`Safe larval bounds: ${T_MIN.toFixed(1)}–${T_MAX.toFixed(1)} °C. Moves in 0.5 °C steps.`} />
+        <Setpoint id="hum" label="Target humidity" target={s.targetHum} current={s.hum} min={H_MIN} max={H_MAX} step={1} digits={0}
+          unit="% RH" tick="%" color={C.warn} onChange={setTargetHum}
+          note={`Ideal BSF range is 60–70 % RH. Settable ${H_MIN}–${H_MAX} % in 1 % steps.`} />
+      </div>
 
       <div className="space-y-5">
         <Card>
@@ -342,7 +371,7 @@ function Climate({ s, set }: { s: Sim; set: (f: (p: Sim) => Sim) => void }) {
           </div>
           <p className="mt-3 flex items-start gap-2 text-xs text-[#A9BBCD]">
             {manual ? <AlertTriangle size={14} className="mt-0.5 shrink-0 text-[#F39C12]" /> : <Cpu size={14} className="mt-0.5 shrink-0 text-[#40D6C3]" />}
-            {manual ? "Operator override. The controller will not correct temperature drift." : "Relays are driven by the ESP32 controller around the setpoint."}
+            {manual ? "Operator override. The controller will not correct temperature drift." : "Relays are driven by the ESP32 controller around the temperature and humidity setpoints."}
           </p>
         </Card>
 
@@ -429,6 +458,12 @@ function Trends({ s }: { s: Sim }) {
               <text x={pl + 6} y={Yt(s.target) - 5} fontSize="10" fill={C.teal} fontFamily={MONO}>target {s.target.toFixed(1)}</text>
             </g>
           )}
+          {s.targetHum >= h0 && s.targetHum <= h1 && (
+            <g>
+              <line x1={pl} x2={W - pr} y1={Yh(s.targetHum)} y2={Yh(s.targetHum)} stroke={C.warn} strokeOpacity="0.5" strokeDasharray="6 4" />
+              <text x={W - pr - 6} y={Yh(s.targetHum) - 5} textAnchor="end" fontSize="10" fill={C.warn} fontFamily={MONO}>target {s.targetHum.toFixed(0)}%</text>
+            </g>
+          )}
           <path d={area} fill="url(#tfill)" />
           <path d={line(hs, Yh)} fill="none" stroke={C.warn} strokeWidth="1.6" strokeLinejoin="round" strokeOpacity="0.9" />
           <path d={line(ts, Yt)} fill="none" stroke={C.teal} strokeWidth="2.2" strokeLinejoin="round" style={{ filter: "drop-shadow(0 0 5px rgba(64,214,195,.7))" }} />
@@ -511,7 +546,7 @@ function SettingsTab({ s, installed, onInstall }: { s: Sim; installed: boolean; 
           {hot === "active" && (
             <div className="mt-4 rounded-lg border border-[#2ECC71]/50 bg-[#2ECC71]/10 p-3">
               <p className="flex items-center gap-2 text-sm text-[#F4F7FA]"><CheckCircle2 size={16} className="text-[#2ECC71]" /> Hotspot active</p>
-              <p className="mt-1 text-xs text-[#A9BBCD]" style={{ fontFamily: MONO }}>Join “INITE8-SETUP”, then open 192.168.4.1</p>
+              <p className="mt-1 text-xs text-[#A9BBCD]" style={{ fontFamily: MONO }}>Join “8TINS-SETUP”, then open 192.168.4.1</p>
               <button onClick={() => setHot("idle")} className="mt-3 w-full rounded-md border border-[#28415C] py-2 text-sm text-[#A9BBCD] hover:text-[#F4F7FA]">Stop hotspot</button>
             </div>
           )}
@@ -522,7 +557,7 @@ function SettingsTab({ s, installed, onInstall }: { s: Sim; installed: boolean; 
             {installed && <Badge label="INSTALLED" color={C.ok} />}
           </div>
           <p className="mt-2 text-sm text-[#A9BBCD]">
-            {installed ? "Running as the installed INITE EIGHT app on this device." : "Add INITE EIGHT to your home screen for one-tap access. You can also keep using the web dashboard."}
+            {installed ? "Running as the installed 8tins FeedMaster app on this device." : "Add 8tins FeedMaster to your home screen for one-tap access. You can also keep using the web dashboard."}
           </p>
           {!installed && (
             <button onClick={onInstall} className="mt-4 flex w-full items-center justify-center gap-2 rounded-lg border border-[#40D6C3]/60 bg-[#40D6C3]/10 py-3 text-sm font-semibold text-[#40D6C3] transition hover:bg-[#40D6C3]/20">
@@ -533,7 +568,7 @@ function SettingsTab({ s, installed, onInstall }: { s: Sim; installed: boolean; 
         <Card>
           <Label>Device</Label>
           <div className="mt-2">
-            <Row k="Model" v="INITE EIGHT" />
+            <Row k="Brand" v={BRAND} />
             <Row k="Firmware" v="v1.4.2" />
             <Row k="ESP32 cores" v={<span className="inline-flex items-center gap-2"><Led on size={7} /> Core 0 · <Led on size={7} /> Core 1</span>} />
             <Row k="Uptime" v={uptime} />
@@ -609,12 +644,12 @@ function InstallSheet({ view, onUseWeb, onInstall, onBack }: {
         <span className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-[#40D6C3] to-transparent" />
         <span className="mx-auto mb-4 block h-1 w-10 rounded-full bg-[#28415C] sm:hidden" />
         <div className="flex items-start gap-4">
-          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg border border-[#40D6C3]/60 bg-[#40D6C3]/10 text-[#40D6C3] shadow-[0_0_16px_-4px_#40D6C3]">
-            <Smartphone size={24} />
+          <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-lg border border-[#40D6C3]/60 bg-[#101B2A] p-1.5 shadow-[0_0_16px_-4px_#40D6C3]">
+            <img src={LOGO} alt="" className="max-h-full max-w-full object-contain" draggable={false} />
           </div>
           <div className="min-w-0 flex-1">
             <h2 id="ie-install-title" className="text-base font-semibold text-[#F4F7FA]">
-              {view === "choice" ? "Open INITE EIGHT" : "Add to Home screen"}
+              {view === "choice" ? `Open ${BRAND}` : "Add to Home screen"}
             </h2>
             <p className="mt-1 text-sm leading-relaxed text-[#A9BBCD]">
               {view === "choice"
@@ -717,7 +752,7 @@ export default function App() {
   }, []);
 
   const title = NAV.find((n) => n.id === tab)!.label;
-  const alarm = tempStatus(s.temp - s.target).l === "ALARM" || humStatus(s.hum).l === "OUT OF RANGE";
+  const alarm = tempStatus(s.temp - s.target).l === "ALARM" || humStatus(s.hum, s.targetHum).l === "OUT OF RANGE";
 
   return (
     <div className="min-h-screen bg-[#101B2A] text-[#F4F7FA]" style={{ fontFamily: SANS, backgroundImage: "radial-gradient(900px 500px at 85% -10%, rgba(64,214,195,0.07), transparent), linear-gradient(rgba(40,65,92,0.18) 1px, transparent 1px), linear-gradient(90deg, rgba(40,65,92,0.18) 1px, transparent 1px)", backgroundSize: "auto, 32px 32px, 32px 32px" }}>
@@ -741,12 +776,9 @@ export default function App() {
 
       {/* Desktop sidebar */}
       <aside className="fixed inset-y-0 left-0 z-20 hidden w-64 flex-col border-r border-[#28415C] bg-[#0D1724]/90 p-5 backdrop-blur lg:flex">
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-[#40D6C3]/60 bg-[#40D6C3]/10 text-lg font-bold text-[#40D6C3] shadow-[0_0_16px_-4px_#40D6C3]" style={{ fontFamily: MONO }}>I8</div>
-          <div>
-            <div className="text-sm font-semibold leading-tight">INITE EIGHT</div>
-            <div className="text-xs text-[#A9BBCD]">BSF climate control</div>
-          </div>
+        <div>
+          <img src={LOGO} alt={BRAND} className="h-16 w-auto" draggable={false} />
+          <div className="mt-2 text-xs text-[#A9BBCD]">BSF climate control</div>
         </div>
         <nav className="mt-8 space-y-1">
           {NAV.map(({ id, label, I }) => (
@@ -765,9 +797,12 @@ export default function App() {
 
       <div className="lg:pl-64">
         <header className="sticky top-0 z-10 flex items-center justify-between border-b border-[#28415C] bg-[#101B2A]/85 px-5 py-3.5 backdrop-blur sm:px-8">
-          <div>
-            <h1 className="text-lg font-semibold">{title}</h1>
-            <p className="text-xs text-[#A9BBCD] lg:hidden">INITE EIGHT · BSF climate control</p>
+          <div className="flex items-center gap-3">
+            <img src={LOGO} alt={BRAND} className="h-9 w-auto lg:hidden" draggable={false} />
+            <div>
+              <h1 className="text-lg font-semibold">{title}</h1>
+              <p className="text-xs text-[#A9BBCD] lg:hidden">BSF climate control</p>
+            </div>
           </div>
           <div className="flex items-center gap-3 text-xs" style={{ fontFamily: MONO }}>
             <span className="hidden items-center gap-2 text-[#A9BBCD] sm:flex"><Clock size={14} /> {clock(new Date(s.history[s.history.length - 1].t))}</span>
